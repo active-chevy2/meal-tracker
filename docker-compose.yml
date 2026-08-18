@@ -14,8 +14,8 @@ services:
     volumes:
       - mariadb_data:/var/lib/mysql
     healthcheck:
-      # Use a shell to expand the environment variable
-      test: ["CMD", "sh", "-c", "mysqladmin ping -h localhost -u root -p$MARIADB_ROOT_PASSWORD"]
+      # Use a shell to expand the environment variable, escaping the $ so Compose ignores it
+      test: ["CMD", "sh", "-c", "mysqladmin ping -h localhost -u root -p$$MARIADB_ROOT_PASSWORD"]
       interval: 10s
       timeout: 5s
       retries: 10
