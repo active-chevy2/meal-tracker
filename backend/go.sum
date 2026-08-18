@@ -1,8 +1,0 @@
-github.com/golang-jwt/jwt/v5 v5.2.0 h1:d/IJsGtch3p0G+1OEn8mDsVV/QVnqXkvj2nfD9+6kA=
-github.com/golang-jwt/jwt/v5 v5.2.0/go.mod h1:pqrtFtq9MNHkwKBEV0c0o3Y1tbT9cV60MbjISMwZoM=
-github.com/gorilla/mux v1.8.1 h1:TuBL49tXwrFdBlMeKgtsrPux2Mj6GJZd8NHe56zO/gM=
-github.com/gorilla/mux v1.8.1/go.mod h1:DVbg23sWSpR3XawJrKSZR60pG0kEBHc/16sSoJbk1I=
-github.com/go-sql-driver/mysql v1.7.1 h1:lUIinVbN1DY0xBg0MyJJ91WJYqUNxE8LmwcsfrZrupo=
-github.com/go-sql-driver/mysql v1.7.1/go.mod h1:OXbVy3sEdclmdH6E8LeGvNXntKrDlNRtYbarwcqxAA4=
-golang.org/x/crypto v0.22.0 h1:g1v0xeRhjcugA6Czt9Gx9w+L0XwwSn7W6P6mCCH9Rtc=
-golang.org/x/crypto v0.22.0/go.mod h1:vr6Su+7cTlO45qkww3VDJlzDn0P97DoMJl7o/fAYk4=
