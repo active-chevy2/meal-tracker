@@ -2,19 +2,19 @@ FROM golang:1.22-alpine AS builder
 
 WORKDIR /build
 
-# Install build dependencies (git, gcc, musl-dev)
+# Install build dependencies
 RUN apk add --no-cache git gcc musl-dev
 
-# Copy only go.mod (go.sum is intentionally omitted)
+# Copy only go.mod (go.sum will be generated during build)
 COPY backend/go.mod backend/go.mod
 
-# Download dependencies – no go.sum, so verification is skipped
-RUN cd backend && go mod download
+# Download dependencies and generate a correct go.sum
+RUN cd backend && go mod download && go mod tidy
 
 # Copy the rest of the source code
 COPY backend/ backend/
 
-# Build the application (CGO enabled for SQLite compatibility, though we use MySQL)
+# Build the application (CGO enabled for compatibility)
 RUN cd backend && CGO_ENABLED=1 GOOS=linux go build -o /build/app .
 
 # Final lightweight image
