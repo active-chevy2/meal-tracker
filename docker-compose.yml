@@ -14,12 +14,12 @@ services:
     volumes:
       - mariadb_data:/var/lib/mysql
     healthcheck:
-      # Use a shell to expand the environment variable, escaping the $ so Compose ignores it
-      test: ["CMD", "sh", "-c", "mysqladmin ping -h localhost -u root -p$$MARIADB_ROOT_PASSWORD"]
+      # Using the official MariaDB healthcheck script for maximum reliability
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 10s
+      retries: 5
+      start_period: 40s
     restart: unless-stopped
 
   app:
@@ -43,7 +43,7 @@ services:
       interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 5s
+      start_period: 20s
 
 volumes:
   mariadb_data:
