@@ -3,7 +3,6 @@ package handlers
 import (
 	"database/sql"
 	"net/http"
-	"strconv"
 
 	"meal-tracker/db"
 	"meal-tracker/middleware"
