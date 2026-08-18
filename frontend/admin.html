@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - Meal Tracker</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="container">
+        <div class="header-content">
+          <div class="logo">
+            <span>🍽️</span>
+            <span id="site-name">Meal Tracker</span>
+          </div>
+          <div class="nav-right">
+            <div class="user-menu">
+              <button class="user-menu-button" id="user-button">
+                Admin ▼
+              </button>
+              <div class="user-menu-dropdown" id="user-dropdown">
+                <a href="/index.html">Dashboard</a>
+                <a href="/settings.html">Settings</a>
+                <button onclick="logout()">Logout</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="container main-content">
+      <div style="display: flex; gap: var(--spacing-xl);">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+          <a href="/admin.html" class="sidebar-item active">User Management</a>
+          <a href="#" id="settings-link" class="sidebar-item" onclick="showTab('settings', event)">Settings</a>
+        </aside>
+
+        <!-- Main content -->
+        <main style="flex: 1;">
+          <!-- Users tab -->
+          <div id="users-tab" class="tab-content active">
+            <h1>User Management</h1>
+
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">All Users</h3>
+              </div>
+              
+              <div id="users-list" style="min-height: 200px;">
+                <p class="text-center text-muted">Loading users...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Settings tab -->
+          <div id="settings-tab" class="tab-content hidden">
+            <h1>Admin Settings</h1>
+
+            <div class="card">
+              <h3>Site Configuration</h3>
+              <form id="settings-form">
+                <div class="form-group">
+                  <label for="site-name-input">Site Name</label>
+                  <input type="text" id="site-name-input" required>
+                </div>
+
+                <div class="form-group">
+                  <label for="logo-url">Logo URL</label>
+                  <input type="url" id="logo-url" placeholder="https://...")
+                </div>
+
+                <div class="form-group">
+                  <label for="default-timezone">Default Timezone</label>
+                  <select id="default-timezone" required>
+                    <option value="UTC">UTC</option>
+                    <option value="Asia/Kuala_Lumpur">Asia/Kuala Lumpur (Malaysia)</option>
+                    <option value="Asia/Singapore">Asia/Singapore</option>
+                    <option value="Asia/Bangkok">Asia/Bangkok</option>
+                    <option value="Asia/Tokyo">Asia/Tokyo</option>
+                    <option value="Europe/London">Europe/London</option>
+                    <option value="America/New_York">America/New York</option>
+                    <option value="America/Los_Angeles">America/Los Angeles</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>
+                    <input type="checkbox" id="public-signup">
+                    Allow Public Sign-ups
+                  </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+              </form>
+            </div>
+
+            <div class="card mt-lg">
+              <h3>Email (SMTP) Settings</h3>
+              <form id="smtp-form">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg);">
+                  <div class="form-group">
+                    <label for="smtp-host">SMTP Host</label>
+                    <input type="text" id="smtp-host" placeholder="smtp.example.com">
+                  </div>
+
+                  <div class="form-group">
+                    <label for="smtp-port">SMTP Port</label>
+                    <input type="number" id="smtp-port" value="587">
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="smtp-user">SMTP Username</label>
+                  <input type="text" id="smtp-user">
+                </div>
+
+                <div class="form-group">
+                  <label for="smtp-password">SMTP Password</label>
+                  <input type="password" id="smtp-password" placeholder="Leave empty to keep current">
+                </div>
+
+                <div class="form-group">
+                  <label for="from-email">From Email Address</label>
+                  <input type="email" id="from-email" placeholder="noreply@example.com">
+                </div>
+
+                <button type="submit" class="btn btn-primary">Save Email Settings</button>
+              </form>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for user actions -->
+  <div id="user-modal" class="hidden" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100;">
+    <div class="card" style="width: 90%; max-width: 400px;">
+      <h3 id="modal-title">User Details</h3>
+      <div id="modal-content"></div>
+      <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg);">
+        <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+        <button id="modal-submit" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    let currentUser = null;
+    let currentSettings = null;
+    let editingUserId = null;
+
+    async function init() {
+      if (!api.isAuthenticated()) {
+        window.location.href = '/login.html';
+        return;
+      }
+
+      try {
+        currentUser = await api.getCurrentUser();
+        currentUser = currentUser.data;
+
+        if (!currentUser.is_admin) {
+          window.location.href = '/index.html';
+          return;
+        }
+
+        setupHeader();
+        await loadSettings();
+        await loadUsers();
+        setupEventListeners();
+      } catch (error) {
+        console.error('Init error:', error);
+        api.logout();
+        window.location.href = '/login.html';
+      }
+    }
+
+    function setupHeader() {
+      document.getElementById('user-button').addEventListener('click', () => {
+        document.getElementById('user-dropdown').classList.toggle('active');
+      });
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.user-menu')) {
+          document.getElementById('user-dropdown').classList.remove('active');
+        }
+      });
+    }
+
+    async function loadSettings() {
+      try {
+        const response = await api.getSettings();
+        currentSettings = response.data;
+        
+        document.getElementById('site-name-input').value = currentSettings.site_name;
+        document.getElementById('site-name').textContent = currentSettings.site_name;
+        document.getElementById('logo-url').value = currentSettings.logo_url || '';
+        document.getElementById('default-timezone').value = currentSettings.default_timezone;
+        document.getElementById('public-signup').checked = currentSettings.public_signup;
+        
+        document.getElementById('smtp-host').value = currentSettings.smtp_host || '';
+        document.getElementById('smtp-port').value = currentSettings.smtp_port || 587;
+        document.getElementById('smtp-user').value = currentSettings.smtp_user || '';
+        document.getElementById('from-email').value = currentSettings.from_email || '';
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    }
+
+    async function loadUsers() {
+      try {
+        const response = await api.listUsers();
+        const users = response.data || [];
+        displayUsers(users);
+      } catch (error) {
+        document.getElementById('users-list').innerHTML = '<p class="text-error">Failed to load users</p>';
+      }
+    }
+
+    function displayUsers(users) {
+      const container = document.getElementById('users-list');
+      if (users.length === 0) {
+        container.innerHTML = '<p class="text-center text-muted">No users</p>';
+        return;
+      }
+
+      container.innerHTML = `
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Name</th>
+              <th>Timezone</th>
+              <th>Role</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${users.map(user => `
+              <tr>
+                <td>${user.email}</td>
+                <td>${user.full_name || 'N/A'}</td>
+                <td>${user.timezone}</td>
+                <td>${user.is_admin ? 'Admin' : 'User'}</td>
+                <td>
+                  <div class="meal-actions">
+                    <button class="btn btn-secondary btn-small" onclick="editUser(${user.id})">Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="confirmDelete(${user.id})">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function editUser(userId) {
+      editingUserId = userId;
+      const response = api.listUsers().then(r => {
+        const user = r.data.find(u => u.id === userId);
+        if (!user) return;
+
+        const modal = document.getElementById('user-modal');
+        document.getElementById('modal-title').textContent = `Edit User: ${user.email}`;
+        document.getElementById('modal-content').innerHTML = `
+          <div class="form-group">
+            <label>Email</label>
+            <input type="text" value="${user.email}" disabled>
+          </div>
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" value="${user.full_name || ''}">
+          </div>
+          <div class="form-group">
+            <label>Timezone</label>
+            <select id="edit-timezone">
+              <option value="UTC" ${user.timezone === 'UTC' ? 'selected' : ''}>UTC</option>
+              <option value="Asia/Kuala_Lumpur" ${user.timezone === 'Asia/Kuala_Lumpur' ? 'selected' : ''}>Asia/Kuala Lumpur</option>
+              <option value="Asia/Singapore" ${user.timezone === 'Asia/Singapore' ? 'selected' : ''}>Asia/Singapore</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="edit-admin" ${user.is_admin ? 'checked' : ''}>
+              Admin
+            </label>
+          </div>
+          <div class="form-group">
+            <label>Reset Password To:</label>
+            <input type="text" id="edit-password" placeholder="New password (optional)">
+          </div>
+        `;
+        modal.classList.remove('hidden');
+      });
+    }
+
+    async function saveUserEdit() {
+      try {
+        const timezone = document.getElementById('edit-timezone').value;
+        const isAdmin = document.getElementById('edit-admin').checked;
+        const newPassword = document.getElementById('edit-password').value;
+
+        await api.updateUserTimezone(editingUserId, timezone);
+        if (newPassword) {
+          await api.resetUserPassword(editingUserId, newPassword);
+        }
+        await api.updateUserRole(editingUserId, isAdmin);
+
+        ui.showAlert('User updated', 'success');
+        closeModal();
+        await loadUsers();
+      } catch (error) {
+        ui.showAlert(error.message, 'error');
+      }
+    }
+
+    async function confirmDelete(userId) {
+      if (!confirm('Delete this user? This cannot be undone.')) return;
+      try {
+        await api.deleteUser(userId);
+        ui.showAlert('User deleted', 'success');
+        await loadUsers();
+      } catch (error) {
+        ui.showAlert(error.message, 'error');
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('user-modal').classList.add('hidden');
+      editingUserId = null;
+    }
+
+    function showTab(tab, e) {
+      e.preventDefault();
+      document.querySelectorAll('[id$="-tab"]').forEach(t => t.classList.add('hidden'));
+      document.getElementById(`${tab}-tab`).classList.remove('hidden');
+    }
+
+    function setupEventListeners() {
+      document.getElementById('modal-submit').addEventListener('click', saveUserEdit);
+
+      document.getElementById('settings-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          await api.updateSettings({
+            site_name: document.getElementById('site-name-input').value,
+            logo_url: document.getElementById('logo-url').value,
+            default_timezone: document.getElementById('default-timezone').value,
+            public_signup: document.getElementById('public-signup').checked,
+          });
+          ui.showAlert('Settings saved', 'success');
+          await loadSettings();
+        } catch (error) {
+          ui.showAlert(error.message, 'error');
+        }
+      });
+
+      document.getElementById('smtp-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          await api.updateSettings({
+            smtp_host: document.getElementById('smtp-host').value,
+            smtp_port: parseInt(document.getElementById('smtp-port').value),
+            smtp_user: document.getElementById('smtp-user').value,
+            smtp_password: document.getElementById('smtp-password').value,
+            from_email: document.getElementById('from-email').value,
+          });
+          ui.showAlert('Email settings saved', 'success');
+        } catch (error) {
+          ui.showAlert(error.message, 'error');
+        }
+      });
+    }
+
+    function logout() {
+      api.logout();
+      window.location.href = '/login.html';
+    }
+
+    init();
+  </script>
+</body>
+</html>

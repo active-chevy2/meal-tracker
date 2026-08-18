@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meal Tracker</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="container">
+        <div class="header-content">
+          <div class="logo">
+            <span>🍽️</span>
+            <span id="site-name">Meal Tracker</span>
+          </div>
+          <div class="nav-right">
+            <div class="user-menu">
+              <button class="user-menu-button" id="user-button">
+                <span id="user-name">User</span> ▼
+              </button>
+              <div class="user-menu-dropdown" id="user-dropdown">
+                <a href="/settings.html">Settings</a>
+                <button onclick="logout()">Logout</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="container main-content">
+      <div style="display: flex; gap: var(--spacing-xl);">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+          <a href="/index.html" class="sidebar-item active">Dashboard</a>
+          <a href="#" id="admin-link" class="sidebar-item hidden">Admin Panel</a>
+        </aside>
+
+        <!-- Main content -->
+        <main style="flex: 1;">
+          <h1>Today's Meals</h1>
+
+          <!-- Add meal form -->
+          <div class="card">
+            <h3>Log a Meal</h3>
+            <form id="meal-form">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg);">
+                <div class="form-group">
+                  <label for="meal-type">Meal Type</label>
+                  <select id="meal-type" required>
+                    <option value="breakfast">Breakfast</option>
+                    <option value="lunch">Lunch</option>
+                    <option value="dinner">Dinner</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="meal-time">Time</label>
+                  <input type="time" id="meal-time" required>
+                </div>
+
+                <div class="form-group">
+                  <label for="meal-portion">Portion</label>
+                  <select id="meal-portion" required>
+                    <option value="snacks">Snacks</option>
+                    <option value="big_meal">Big Meal</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="meal-date">Date</label>
+                  <input type="date" id="meal-date" required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="meal-notes">Notes</label>
+                <textarea id="meal-notes" placeholder="Optional notes about the meal..."></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-primary">Log Meal</button>
+            </form>
+          </div>
+
+          <!-- Tabs -->
+          <div class="tabs">
+            <button class="tab active" data-tab="today">Today</button>
+            <button class="tab" data-tab="week">This Week</button>
+            <button class="tab" data-tab="month">This Month</button>
+          </div>
+
+          <!-- Today tab -->
+          <div id="today-tab" class="tab-content active">
+            <div id="today-meals" style="min-height: 200px;">
+              <p class="text-center text-muted">Loading meals...</p>
+            </div>
+          </div>
+
+          <!-- Week tab -->
+          <div id="week-tab" class="tab-content">
+            <div id="week-meals" style="min-height: 200px;">
+              <p class="text-center text-muted">Loading meals...</p>
+            </div>
+          </div>
+
+          <!-- Month tab -->
+          <div id="month-tab" class="tab-content">
+            <div id="month-meals" style="min-height: 200px;">
+              <p class="text-center text-muted">Loading meals...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    let currentUser = null;
+
+    // Initialize page
+    async function init() {
+      if (!api.isAuthenticated()) {
+        window.location.href = '/login.html';
+        return;
+      }
+
+      try {
+        currentUser = await api.getCurrentUser();
+        currentUser = currentUser.data;
+        updateHeader();
+        loadSettings();
+        loadMeals();
+        setupEventListeners();
+      } catch (error) {
+        console.error('Init error:', error);
+        api.logout();
+        window.location.href = '/login.html';
+      }
+    }
+
+    function updateHeader() {
+      document.getElementById('user-name').textContent = currentUser.full_name || currentUser.email;
+      
+      // Show admin link if user is admin
+      if (currentUser.is_admin) {
+        document.getElementById('admin-link').classList.remove('hidden');
+        document.getElementById('admin-link').href = '/admin.html';
+      }
+
+      // Toggle user menu
+      document.getElementById('user-button').addEventListener('click', () => {
+        document.getElementById('user-dropdown').classList.toggle('active');
+      });
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.user-menu')) {
+          document.getElementById('user-dropdown').classList.remove('active');
+        }
+      });
+    }
+
+    async function loadSettings() {
+      try {
+        const response = await api.getSettings();
+        if (response.data.site_name) {
+          document.getElementById('site-name').textContent = response.data.site_name;
+        }
+      } catch (e) {
+        // Settings might not be accessible for non-admin
+      }
+    }
+
+    async function loadMeals() {
+      await loadTodayMeals();
+      await loadWeekMeals();
+      await loadMonthMeals();
+    }
+
+    async function loadTodayMeals() {
+      try {
+        const response = await api.getTodaysMeals();
+        const meals = response.data || [];
+        displayMeals('today-meals', meals);
+      } catch (error) {
+        document.getElementById('today-meals').innerHTML = '<p class="text-error">Failed to load meals</p>';
+      }
+    }
+
+    async function loadWeekMeals() {
+      try {
+        const today = new Date();
+        const startDate = ui.getWeekStart(today);
+        const endDate = ui.getCurrentDate();
+        const response = await api.getMealsByDateRange(startDate, endDate);
+        const meals = response.data || [];
+        displayMeals('week-meals', meals);
+      } catch (error) {
+        document.getElementById('week-meals').innerHTML = '<p class="text-error">Failed to load meals</p>';
+      }
+    }
+
+    async function loadMonthMeals() {
+      try {
+        const today = new Date();
+        const startDate = ui.getMonthStart(today);
+        const endDate = ui.getMonthEnd(today);
+        const response = await api.getMealsByDateRange(startDate, endDate);
+        const meals = response.data || [];
+        displayMeals('month-meals', meals);
+      } catch (error) {
+        document.getElementById('month-meals').innerHTML = '<p class="text-error">Failed to load meals</p>';
+      }
+    }
+
+    function displayMeals(containerId, meals) {
+      const container = document.getElementById(containerId);
+      if (meals.length === 0) {
+        container.innerHTML = '<p class="text-center text-muted">No meals logged yet</p>';
+        return;
+      }
+
+      container.innerHTML = meals.map(meal => `
+        <div class="meal-card">
+          <div class="meal-info">
+            <div>
+              <span class="meal-type">${meal.meal_type}</span>
+              <span class="meal-portion">${meal.portion}</span>
+            </div>
+            <div class="meal-time">${ui.formatTime(meal.time)} on ${ui.formatDate(meal.date)}</div>
+            ${meal.notes ? `<div class="meal-notes">${meal.notes}</div>` : ''}
+          </div>
+          <div class="meal-actions">
+            <button class="btn btn-secondary btn-small" onclick="editMeal(${meal.id})">Edit</button>
+            <button class="btn btn-danger btn-small" onclick="deleteMeal(${meal.id})">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function deleteMeal(mealId) {
+      if (!confirm('Delete this meal?')) return;
+      try {
+        await api.deleteMeal(mealId);
+        ui.showAlert('Meal deleted', 'success');
+        await loadMeals();
+      } catch (error) {
+        ui.showAlert(error.message, 'error');
+      }
+    }
+
+    function editMeal(mealId) {
+      // Simple edit: just delete and re-add
+      ui.showAlert('Edit feature: Delete and re-add the meal', 'warning');
+    }
+
+    function setupEventListeners() {
+      // Set today's date by default
+      document.getElementById('meal-date').valueAsDate = new Date();
+      const now = new Date();
+      document.getElementById('meal-time').value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      // Form submission
+      document.getElementById('meal-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const mealType = document.getElementById('meal-type').value;
+        const date = document.getElementById('meal-date').value;
+        const time = document.getElementById('meal-time').value;
+        const portion = document.getElementById('meal-portion').value;
+        const notes = document.getElementById('meal-notes').value;
+
+        try {
+          await api.createMeal(mealType, date, time, portion, notes);
+          ui.showAlert('Meal logged successfully', 'success');
+          document.getElementById('meal-form').reset();
+          document.getElementById('meal-date').valueAsDate = new Date();
+          await loadMeals();
+        } catch (error) {
+          ui.showAlert(error.message, 'error');
+        }
+      });
+
+      // Tab switching
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          tab.classList.add('active');
+          document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
+        });
+      });
+    }
+
+    function logout() {
+      api.logout();
+      window.location.href = '/login.html';
+    }
+
+    init();
+  </script>
+</body>
+</html>

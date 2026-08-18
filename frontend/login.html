@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meal Tracker - Login</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app" style="align-items: center; justify-content: center;">
+    <div style="width: 100%; max-width: 400px; padding: 2rem;">
+      <div class="text-center mb-lg">
+        <h1>Meal Tracker</h1>
+        <p>Track your daily meals</p>
+      </div>
+
+      <div id="alert-container"></div>
+
+      <div id="login-form" class="card">
+        <h2 style="margin-top: 0;">Login</h2>
+        <form>
+          <div class="form-group">
+            <label for="login-email">Email</label>
+            <input type="email" id="login-email" required>
+          </div>
+
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+            Login
+          </button>
+
+          <p class="text-center mt-lg mb-lg">
+            No account yet? <a href="#" onclick="showSignup(event)">Sign up</a>
+          </p>
+
+          <p class="text-center">
+            <a href="#" onclick="showReset(event)">Forgot password?</a>
+          </p>
+        </form>
+      </div>
+
+      <div id="signup-form" class="card hidden">
+        <h2 style="margin-top: 0;">Create Account</h2>
+        <form>
+          <div class="form-group">
+            <label for="signup-name">Full Name</label>
+            <input type="text" id="signup-name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="signup-email">Email</label>
+            <input type="email" id="signup-email" required>
+          </div>
+
+          <div class="form-group">
+            <label for="signup-timezone">Timezone</label>
+            <select id="signup-timezone">
+              <option value="UTC">UTC</option>
+              <option value="Asia/Kuala_Lumpur">Asia/Kuala Lumpur (Malaysia)</option>
+              <option value="Asia/Singapore">Asia/Singapore</option>
+              <option value="Asia/Bangkok">Asia/Bangkok</option>
+              <option value="Asia/Tokyo">Asia/Tokyo</option>
+              <option value="Europe/London">Europe/London</option>
+              <option value="America/New_York">America/New York</option>
+              <option value="America/Los_Angeles">America/Los Angeles</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="signup-password">Password</label>
+            <input type="password" id="signup-password" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+            Sign Up
+          </button>
+
+          <p class="text-center mt-lg">
+            Already have an account? <a href="#" onclick="showLogin(event)">Login</a>
+          </p>
+        </form>
+      </div>
+
+      <div id="reset-form" class="card hidden">
+        <h2 style="margin-top: 0;">Password Reset</h2>
+        <form>
+          <div class="form-group">
+            <label for="reset-email">Email Address</label>
+            <input type="email" id="reset-email" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+            Send Reset Link
+          </button>
+
+          <p class="text-center mt-lg">
+            <a href="#" onclick="showLogin(event)">Back to login</a>
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    // Check if already logged in
+    if (api.isAuthenticated()) {
+      window.location.href = '/index.html';
+    }
+
+    const alertContainer = document.getElementById('alert-container');
+
+    function showAlert(message, type = 'success') {
+      alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+      setTimeout(() => { alertContainer.innerHTML = ''; }, 4000);
+    }
+
+    function showLogin(e) {
+      e.preventDefault();
+      document.getElementById('login-form').classList.remove('hidden');
+      document.getElementById('signup-form').classList.add('hidden');
+      document.getElementById('reset-form').classList.add('hidden');
+    }
+
+    function showSignup(e) {
+      e.preventDefault();
+      document.getElementById('login-form').classList.add('hidden');
+      document.getElementById('signup-form').classList.remove('hidden');
+      document.getElementById('reset-form').classList.add('hidden');
+    }
+
+    function showReset(e) {
+      e.preventDefault();
+      document.getElementById('login-form').classList.add('hidden');
+      document.getElementById('signup-form').classList.add('hidden');
+      document.getElementById('reset-form').classList.remove('hidden');
+    }
+
+    // Login handler
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      try {
+        const response = await api.login(email, password);
+        api.setToken(response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        window.location.href = '/index.html';
+      } catch (error) {
+        showAlert(error.message, 'error');
+      }
+    });
+
+    // Signup handler
+    document.getElementById('signup-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fullName = document.getElementById('signup-name').value;
+      const email = document.getElementById('signup-email').value;
+      const password = document.getElementById('signup-password').value;
+      const timezone = document.getElementById('signup-timezone').value;
+
+      try {
+        const response = await api.signup(email, password, fullName, timezone);
+        api.setToken(response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        window.location.href = '/index.html';
+      } catch (error) {
+        showAlert(error.message, 'error');
+      }
+    });
+
+    // Reset password handler
+    document.getElementById('reset-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('reset-email').value;
+
+      try {
+        await api.requestPasswordReset(email);
+        showAlert('Reset link sent to your email (check spam folder)', 'success');
+        setTimeout(() => showLogin({ preventDefault: () => {} }), 2000);
+      } catch (error) {
+        showAlert(error.message, 'error');
+      }
+    });
+  </script>
+</body>
+</html>

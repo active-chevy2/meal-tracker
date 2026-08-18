@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings - Meal Tracker</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="container">
+        <div class="header-content">
+          <div class="logo">
+            <span>🍽️</span>
+            <span id="site-name">Meal Tracker</span>
+          </div>
+          <div class="nav-right">
+            <div class="user-menu">
+              <button class="user-menu-button" id="user-button">
+                <span id="user-name">User</span> ▼
+              </button>
+              <div class="user-menu-dropdown" id="user-dropdown">
+                <a href="/index.html">Dashboard</a>
+                <a href="#" id="admin-link" class="hidden">Admin Panel</a>
+                <button onclick="logout()">Logout</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="container main-content">
+      <div style="display: flex; gap: var(--spacing-xl);">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+          <a href="/index.html" class="sidebar-item">Dashboard</a>
+          <a href="/settings.html" class="sidebar-item active">Settings</a>
+          <a href="#" id="admin-sidebar-link" class="sidebar-item hidden">Admin Panel</a>
+        </aside>
+
+        <!-- Main content -->
+        <main style="flex: 1;">
+          <h1>Account Settings</h1>
+
+          <div class="card">
+            <h3>Profile</h3>
+            <form id="profile-form">
+              <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" disabled>
+              </div>
+
+              <div class="form-group">
+                <label for="full-name">Full Name</label>
+                <input type="text" id="full-name">
+              </div>
+
+              <div class="form-group">
+                <label for="timezone">Timezone</label>
+                <select id="timezone" required>
+                  <option value="UTC">UTC</option>
+                  <option value="Asia/Kuala_Lumpur">Asia/Kuala Lumpur (Malaysia)</option>
+                  <option value="Asia/Singapore">Asia/Singapore</option>
+                  <option value="Asia/Bangkok">Asia/Bangkok</option>
+                  <option value="Asia/Tokyo">Asia/Tokyo</option>
+                  <option value="Europe/London">Europe/London</option>
+                  <option value="America/New_York">America/New York</option>
+                  <option value="America/Los_Angeles">America/Los Angeles</option>
+                </select>
+              </div>
+
+              <button type="submit" class="btn btn-primary">Save Profile</button>
+            </form>
+          </div>
+
+          <div class="card mt-lg">
+            <h3>Change Password</h3>
+            <form id="password-form">
+              <div class="form-group">
+                <label for="current-password">Current Password</label>
+                <input type="password" id="current-password" required>
+              </div>
+
+              <div class="form-group">
+                <label for="new-password">New Password</label>
+                <input type="password" id="new-password" required>
+              </div>
+
+              <div class="form-group">
+                <label for="confirm-password">Confirm Password</label>
+                <input type="password" id="confirm-password" required>
+              </div>
+
+              <button type="submit" class="btn btn-primary">Update Password</button>
+            </form>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    let currentUser = null;
+
+    async function init() {
+      if (!api.isAuthenticated()) {
+        window.location.href = '/login.html';
+        return;
+      }
+
+      try {
+        const response = await api.getCurrentUser();
+        currentUser = response.data;
+        updateHeader();
+        loadUserData();
+        setupEventListeners();
+      } catch (error) {
+        console.error('Init error:', error);
+        api.logout();
+        window.location.href = '/login.html';
+      }
+    }
+
+    function updateHeader() {
+      document.getElementById('user-name').textContent = currentUser.full_name || currentUser.email;
+      document.getElementById('site-name').textContent = localStorage.getItem('site_name') || 'Meal Tracker';
+
+      if (currentUser.is_admin) {
+        document.getElementById('admin-link').classList.remove('hidden');
+        document.getElementById('admin-link').href = '/admin.html';
+        document.getElementById('admin-sidebar-link').classList.remove('hidden');
+        document.getElementById('admin-sidebar-link').href = '/admin.html';
+      }
+
+      document.getElementById('user-button').addEventListener('click', () => {
+        document.getElementById('user-dropdown').classList.toggle('active');
+      });
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.user-menu')) {
+          document.getElementById('user-dropdown').classList.remove('active');
+        }
+      });
+    }
+
+    function loadUserData() {
+      document.getElementById('email').value = currentUser.email;
+      document.getElementById('full-name').value = currentUser.full_name || '';
+      document.getElementById('timezone').value = currentUser.timezone || 'UTC';
+    }
+
+    function setupEventListeners() {
+      document.getElementById('profile-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // Note: Profile update would require an API endpoint
+        // For now, just show a message
+        ui.showAlert('Profile update would be implemented here', 'warning');
+      });
+
+      document.getElementById('password-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const newPassword = document.getElementById('new-password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+
+        if (newPassword !== confirmPassword) {
+          ui.showAlert('Passwords do not match', 'error');
+          return;
+        }
+
+        // Note: Current password verification would need to be implemented
+        // For now, just show a message
+        ui.showAlert('Password change would be implemented here', 'warning');
+      });
+    }
+
+    function logout() {
+      api.logout();
+      window.location.href = '/login.html';
+    }
+
+    init();
+  </script>
+</body>
+</html>
