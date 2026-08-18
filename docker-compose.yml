@@ -1,8 +1,9 @@
+version: '3.8'
+
 services:
   mariadb:
     image: mariadb:latest
     environment:
-      # Use the variable from Coolify, or default to 'root'
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
       MARIADB_DATABASE: ${DB_NAME:-meal_tracker}
       MARIADB_USER: ${DB_USER:-meal_tracker}
@@ -13,8 +14,8 @@ services:
     volumes:
       - mariadb_data:/var/lib/mysql
     healthcheck:
-      # Ping uses the root password from the container's environment
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MARIADB_ROOT_PASSWORD}"]
+      # Use a shell to expand the environment variable
+      test: ["CMD", "sh", "-c", "mysqladmin ping -h localhost -u root -p$MARIADB_ROOT_PASSWORD"]
       interval: 10s
       timeout: 5s
       retries: 10
