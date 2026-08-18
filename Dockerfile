@@ -5,14 +5,11 @@ WORKDIR /build
 # Install build dependencies
 RUN apk add --no-cache git gcc musl-dev
 
-# Copy only go.mod (go.sum will be generated during build)
-COPY backend/go.mod backend/go.mod
-
-# Download dependencies and generate a correct go.sum
-RUN cd backend && go mod download && go mod tidy
-
-# Copy the rest of the source code
+# Copy all source code (this includes go.mod, but not go.sum)
 COPY backend/ backend/
+
+# Download dependencies and generate a correct go.sum based on the source code
+RUN cd backend && go mod download && go mod tidy
 
 # Build the application (CGO enabled for compatibility)
 RUN cd backend && CGO_ENABLED=1 GOOS=linux go build -o /build/app .
