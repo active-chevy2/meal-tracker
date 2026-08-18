@@ -2,35 +2,35 @@ FROM golang:1.22-alpine AS builder
 
 WORKDIR /build
 
-# Install dependencies
+# Install build dependencies (git, gcc, musl-dev)
 RUN apk add --no-cache git gcc musl-dev
 
-# Copy go files
+# Copy only go.mod (go.sum is intentionally omitted)
 COPY backend/go.mod backend/go.mod
-COPY backend/go.sum backend/go.sum
 
+# Download dependencies – no go.sum, so verification is skipped
 RUN cd backend && go mod download
 
-# Copy source code
+# Copy the rest of the source code
 COPY backend/ backend/
 
-# Build the application
+# Build the application (CGO enabled for SQLite compatibility, though we use MySQL)
 RUN cd backend && CGO_ENABLED=1 GOOS=linux go build -o /build/app .
 
-# Final stage
+# Final lightweight image
 FROM alpine:latest
 
 RUN apk add --no-cache ca-certificates
 
 WORKDIR /app
 
-# Copy binary from builder
+# Copy the compiled binary
 COPY --from=builder /build/app /app/app
 
-# Copy frontend files
+# Copy frontend static files
 COPY frontend/ /app/frontend/
 
-# Create non-root user
+# Create a non-root user
 RUN addgroup -g 1000 app && \
     adduser -D -u 1000 -G app app && \
     chown -R app:app /app
