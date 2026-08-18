@@ -1,23 +1,24 @@
-version: '3.8'
-
 services:
   mariadb:
     image: mariadb:latest
     environment:
-      MARIADB_ROOT_PASSWORD: $DB_ROOT_PASSWORD
-      MARIADB_DATABASE: $DB_NAME
-      MARIADB_USER: $DB_USER
-      MARIADB_PASSWORD: $DB_PASSWORD
+      # Use defaults if environment variables are not set
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MARIADB_DATABASE: ${DB_NAME:-meal_tracker}
+      MARIADB_USER: ${DB_USER:-meal_tracker}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-password}
       MARIADB_INITDB_SKIP_TZINFO: 1
     expose:
       - "3306"
     volumes:
       - mariadb_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      # Simple ping test – works even before innodb is fully initialized
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MARIADB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     restart: unless-stopped
 
   app:
@@ -28,11 +29,11 @@ services:
     environment:
       DB_HOST: mariadb
       DB_PORT: "3306"
-      DB_USER: $DB_USER
-      DB_PASSWORD: $DB_PASSWORD
-      DB_NAME: $DB_NAME
+      DB_USER: ${DB_USER:-meal_tracker}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      DB_NAME: ${DB_NAME:-meal_tracker}
       PORT: "8080"
-      JWT_SECRET: $JWT_SECRET
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
     expose:
       - "8080"
     restart: unless-stopped
